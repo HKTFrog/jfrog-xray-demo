@@ -1,0 +1,57 @@
+name: npm build and xray scan
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ secrets.JF_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+
+      - name: Configure npm
+        run: |
+          jf npm-config \
+            --server-id-resolve=setup-jfrog-cli-server \
+            --server-id-deploy=setup-jfrog-cli-server \
+            --repo-resolve=alpha-virtual_dev \
+            --repo-deploy=alpha-npm-local-dev
+
+      - name: Install dependencies
+        run: |
+          jf npm install \
+            --build-name=xray-demo-build \
+            --build-number=${{ github.run_number }}
+
+      - name: Publish package
+        run: |
+          jf npm publish \
+            --build-name=xray-demo-build \
+            --build-number=${{ github.run_number }}
+
+      - name: Publish build info
+        run: |
+          jf rt build-publish \
+            --project=alpha \
+            xray-demo-build ${{ github.run_number }}
+
+      - name: Xray scan
+        run: |
+          jf bs \
+            --project=alpha \
+            --fail=false \
+            --vuln \
+            xray-demo-build ${{ github.run_number }}
