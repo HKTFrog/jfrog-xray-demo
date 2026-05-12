@@ -34,7 +34,7 @@ jobs:
         env:
           JFROG_CLI_LOG_LEVEL: DEBUG
         run: |
-          jf npm install \
+          jf npm ci \
             --build-name=xray-demo-build \
             --build-number=${{ github.run_number }}
 
